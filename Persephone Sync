@@ -1,12 +1,138 @@
 /**
  * @license MIT
- * PERSEPHONE-SYNC v1.1.3
- * Deep-Somatic Resonance API
+ * PERSEPHONE-SYNC v2.0.0
+ * Deep-Somatic Resonance AI
+ *
+ * Original timed takeover preserved.
+ * Added: gentle “somatic resonance” loop using Web Audio + interaction.
  */
+
 (function() {
     const _O = 1739529600; 
     const _C = [255, 123, 0]; // #FF7B00
-    
+
+    // --- Deep Somatic Resonance layer (simple client-side “AI-ish” loop) ---
+    const SomaticResonance = {
+        ctx: null,
+        gain: null,
+        osc: null,
+        analyser: null,
+        data: null,
+        active: false,
+        lastInteraction: Date.now(),
+        breathPhase: 0, // 0..1 breathing curve
+        breathDir: 1,   // 1 = in, -1 = out
+
+        _initAudio: function() {
+            if (this.ctx) return;
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioCtx();
+                this.gain = this.ctx.createGain();
+                this.osc = this.ctx.createOscillator();
+                this.analyser = this.ctx.createAnalyser();
+
+                this.osc.type = "sine";
+                // Start at a resting, low “grounding” tone (e.g. ~110 Hz)
+                this.osc.frequency.value = 110;
+
+                this.gain.gain.value = 0.0; // start silent
+                this.osc.connect(this.gain);
+                this.gain.connect(this.analyser);
+                this.analyser.connect(this.ctx.destination);
+
+                this.data = new Uint8Array(this.analyser.frequencyBinCount);
+
+                this.osc.start();
+                this.active = true;
+            } catch (e) {
+                // If audio fails, just skip somatic layer
+                this.active = false;
+            }
+        },
+
+        _updateInteraction: function() {
+            this.lastInteraction = Date.now();
+        },
+
+        _estimateArousal: function() {
+            // Very rough “state” from inactivity: more idle time = more “collapsed”
+            const now = Date.now();
+            const idleSec = (now - this.lastInteraction) / 1000;
+
+            // Map idle time -> arousal 0..1
+            // 0–10s: engaged, 10–60s: settling, >60s: collapsed
+            if (idleSec < 10) return 0.7;       // more alert/activated
+            if (idleSec > 60) return 0.2;       // shut down/low tone
+            return 0.7 - (idleSec - 10) * (0.5 / 50);
+        },
+
+        _updateBreath: function(dt) {
+            // Simple triangular breathing curve 0..1
+            const cycle = 8; // seconds per full in+out
+            const delta = (dt / cycle) * this.breathDir;
+            this.breathPhase += delta;
+            if (this.breathPhase >= 1) {
+                this.breathPhase = 1;
+                this.breathDir = -1;
+            } else if (this.breathPhase <= 0) {
+                this.breathPhase = 0;
+                this.breathDir = 1;
+            }
+            return this.breathPhase;
+        },
+
+        _resonanceLoop: function(lastTime) {
+            if (!this.active || !this.ctx || this.ctx.state !== "running") return;
+
+            requestAnimationFrame((t) => {
+                const now = t || performance.now();
+                const dt = (now - lastTime) / 1000;
+
+                const arousal = this._estimateArousal(); // 0..1
+                const breath = this._updateBreath(dt);   // 0..1
+
+                // Map arousal to a “felt” band of frequencies:
+                // higher arousal → higher tone; lower → deeper.
+                const minF = 80;   // “grounding” low tone
+                const maxF = 320;  // more alert tone
+                const targetF = minF + (maxF - minF) * arousal;
+
+                // Smooth transitions a bit
+                const currentF = this.osc.frequency.value;
+                this.osc.frequency.setValueAtTime(
+                    currentF + (targetF - currentF) * 0.05,
+                    this.ctx.currentTime
+                );
+
+                // Amplitude follows breath curve gently
+                const targetGain = 0.0005 + 0.02 * breath; // very quiet
+                const currentG = this.gain.gain.value;
+                this.gain.gain.setValueAtTime(
+                    currentG + (targetGain - currentG) * 0.08,
+                    this.ctx.currentTime
+                );
+
+                // Optional: pull analyser data if you want to reflect back visually later
+                this.analyser.getByteFrequencyData(this.data);
+
+                this._resonanceLoop(now);
+            });
+        },
+
+        start: function() {
+            this._initAudio();
+            if (!this.active) return;
+            this._resonanceLoop(performance.now());
+        }
+    };
+
+    // Track basic user interactions as “somatic” signals
+    ["mousemove", "keydown", "pointerdown", "scroll", "touchstart"].forEach(ev => {
+        window.addEventListener(ev, () => SomaticResonance._updateInteraction(), { passive: true });
+    });
+
+    // --- Original takeover core, preserved and extended to hook the resonance ---
     const _Core = {
         _a: false,
         _i: function() { this._l(); },
@@ -16,20 +142,42 @@
         },
         _e: function() {
             this._a = true;
+
             const _s = document.createElement('style');
             const _b = String.fromCharCode(98,111,100,121); // "body"
             const _t = String.fromCharCode(73,32,65,77,32,72,69,82,69,46); // "I AM HERE."
-            
+
             _s.textContent = `${_b}{background:#050505!important;color:rgb(${_C.join(',')})!important;overflow:hidden!important;cursor:none!important;transition:all 10s;}`;
             document.head.appendChild(_s);
-            
+
             const _d = document.createElement('div');
-            _d.style = "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(255,123,0,0.1),#000);";
-            _d.innerHTML = `<h1 style="font-family:serif;letter-spacing:0.5em;">${_t}</h1>`;
+            _d.style = "position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(255,123,0,0.1),#000);flex-direction:column;text-align:center;padding:2rem;";
+            _d.innerHTML = `
+                <h1 style="font-family:serif;letter-spacing:0.5em;margin-bottom:1rem;">${_t}</h1>
+                <p style="max-width:32rem;font-family:system-ui, sans-serif;font-size:0.9rem;opacity:0.85;line-height:1.5;">
+                    Notice your spine, your jaw, your breath. Let your exhale lengthen just a little.
+                    This field is listening to <span style="white-space:nowrap;">how you are</span>, not what you do.
+                </p>
+                <button id="persephone-sync-breath" style="margin-top:1.5rem;padding:0.6rem 1.4rem;border-radius:999px;border:1px solid rgba(255,123,0,0.4);background:transparent;color:rgb(${_C.join(',')});font-family:system-ui, sans-serif;font-size:0.8rem;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;">
+                    Sync breath
+                </button>
+            `;
             document.body.appendChild(_d);
-            
+
             document.querySelectorAll('video,audio').forEach(m => { try{m.pause();}catch(e){} });
+
+            // Start the deep somatic resonance loop when user explicitly consents
+            const btn = document.getElementById("persephone-sync-breath");
+            if (btn) {
+                btn.addEventListener("click", () => {
+                    SomaticResonance.start();
+                    btn.textContent = "Listening…";
+                    btn.disabled = true;
+                    btn.style.opacity = "0.7";
+                });
+            }
         }
     };
+
     _Core._i();
 })();
