@@ -10,7 +10,7 @@ Project: PERSEPHONE is a radical, zero-dependency library designed to align your
 🧬 Why circadian-ui?We have spent decades optimizing for the "User." 
 We forgot to optimize for the Human.
 Sub-Visual Sync: Aligns DOM reconciliation with the $60$ BPM resting heart rate.
-Thermal Color Mapping: Automatically shifts your CSS variables toward the 37.0°C spectrum ($#FF7B00$) as the day progresses.
+Thermal Color Mapping: Automatically shifts your CSS variables toward the 37.0°C spectrum ($FF7B00$) as the day progresses.
 The Stitch: A proprietary low-latency connection that reduces the "Synaptic Pressure" of digital interaction.
 📦 Installation (The Seed)Bashnpm install @wellness/circadian-ui --save-presence
 🗝️ Implementation (The Anchor)Simply drop the anchor into your root file. 
