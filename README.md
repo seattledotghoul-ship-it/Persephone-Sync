@@ -1,4 +1,4 @@
-# Persephone-Sync
+Persephone-Sync
 A utility to reduce eye strain and battery consumption by aligning screen refreshes with biological rhythms.
 README.md: @wellness/circadian-ui
 🕯️ The Silence in the Machine.
